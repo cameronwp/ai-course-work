@@ -54,36 +54,44 @@ def localize(colors,measurements,motions,sensor_right,p_move):
         for row in range(len(grid)):
             new_row = []
             for col in range(len(grid[row])):
-                after_x = grid[row][(col + dx) % len(grid)]
-                after_y = grid[(row + dy) % len(grid[row])][col]
+                cell = grid[row][col]
+                moved_col = (col - dx) % (len(grid[row]))
+                moved_row = (row - dy) % (len(grid))
+                new_pos = grid[moved_row][moved_col]
 
-                new_pos = p_move * (after_x + after_y)
-                new_row.append(new_pos)
+                moved_probability = p_move * new_pos + (1 - p_move) * cell
+                new_row.append(moved_probability)
             q.append(new_row)
 
-            # s = pExact * p[(i-U) % len(p)]
-            # s = s + pOvershoot * p[(i-U-1) % len(p)]
-            # s = s + pUndershoot * p[(i-U+1) % len(p)]
         return q
 
-    def sense(grid):
+    def sense(grid, measurement):
         q=[]
-        # for i in range(len(grid)):
-            # something about sensor_right * grid[i]
-        s = sum(q)
-        for i in range(len(q)):
-            q[i] = q[i] / s
+        total_probability = 0
+
+        for row in range(len(grid)):
+            new_row = []
+            for col in range(len(grid[row])):
+                color = colors[row][col]
+                cell = grid[row][col]
+
+                hit = (color == measurement)
+                sensed_probability = cell * (hit * sensor_right + (1 - hit) * (1 - sensor_right))
+                total_probability += sensed_probability
+                new_row.append(sensed_probability)
+            q.append(new_row)
+
+        q = [[q[row][col] / total_probability for col in range(len(q[0]))] for row in range(len(q))]
+
         return q
 
     # initializes p to a uniform distribution over a grid of the same dimensions as colors
     pinit = 1.0 / float(len(colors)) / float(len(colors[0]))
     grid = [[pinit for row in range(len(colors[0]))] for col in range(len(colors))]
 
-    # move
-
-    for motion in motions:
-        grid = move(grid, motion)
-        # grid = sense(grid)
+    for m in range(len(motions)):
+        grid = move(grid, motions[m])
+        grid = sense(grid, measurements[m])
 
     return grid
 
